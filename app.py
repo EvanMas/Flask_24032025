@@ -1,5 +1,11 @@
 from flask import Flask, request
 from random import choice
+from pathlib import Path
+
+BASE_DIR = Path(__file__).parent
+path_to_db = BASE_DIR / "store.db"  # <- тут путь к БД# Используем так:
+connection = sqlite3.connect(path_to_db)
+
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
