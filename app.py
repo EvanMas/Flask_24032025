@@ -2,9 +2,9 @@ from flask import Flask, request, jsonify, abort
 from pathlib import Path
 from werkzeug.exceptions import HTTPException
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, relationship
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import String, select, Integer
+from sqlalchemy import String, select, Integer, ForeignKey
 from flask_migrate import Migrate
 
 class Base(DeclarativeBase):
@@ -14,43 +14,62 @@ BASE_DIR = Path(__file__).parent
 
 app = Flask(__name__)
 app.json.ensure_ascii = False
-app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{BASE_DIR / 'qoutes.db'}"
+app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{BASE_DIR / 'quotes.db'}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(model_class=Base)
 db.init_app(app)
 migrate = Migrate(app, db)
 
+# 
+class AuthorModel(db.Model):
+    __tablename__ = 'authors'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[int] = mapped_column(String(32), index= True, unique=True)
+    quotes: Mapped[list['QuoteModel']] = relationship( back_populates='author', lazy='dynamic')
+
+    def __init__(self, name):
+      self.name = name
+
+    def to_dict(self):
+        return {
+            'id' : self.id,
+            "name": self.name
+        }   
+    
+# 
 class QuoteModel(db.Model):
     __tablename__ = 'quotes'
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    author: Mapped[str] = mapped_column(String(32))
+    author_id: Mapped[str] = mapped_column(ForeignKey('authors.id'))
+    author: Mapped['AuthorModel'] = relationship(back_populates='quotes')
     text: Mapped[str] = mapped_column(String(255))
-    rating: Mapped[int] = mapped_column(Integer, default=1)
 
     def __init__(self, author, text):
         self.author = author
         self.text  = text
 
+
     def to_dict(self):
         return {
             "id": self.id,
-            "author": self.author,
             "text": self.text,
-            "rating": self.rating
         }    
 
 @app.errorhandler(HTTPException)
 def handle_exeption(e):
     return jsonify({"message": e.description}), e.code
 
-# URL: quotes
-@app.route("/quotes")
-def get_quotes() -> list[dict[str, any]]: 
-    quotes = db.session.execute(select(QuoteModel)).scalars().all()
-    # создаем через генератор список словарей и потом конвертируем их в json
-    return jsonify([quote.to_dict() for quote in quotes]), 200
+# URL: /authors/1/quotes
+@app.route("/authors/<int:author_id>/quotes")
+def get_author_quotes(author_id): 
+    author = db.session.get(AuthorModel, author_id)
+    quotes = []
+    for quote in author.quotes:
+        quotes.append(quote.to_dict())
+
+    return jsonify(author=author.to_dict(), quotes=quotes), 200
 
 # URL: quotes/<int:quote_id>
 @app.route("/quotes/<int:quote_id>")
