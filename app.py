@@ -8,6 +8,7 @@ from sqlalchemy import String, select, Integer, ForeignKey, DateTime
 from sqlalchemy.sql import func
 from flask_migrate import Migrate
 import datetime
+import requests
 
 class Base(DeclarativeBase):
     pass
@@ -72,7 +73,7 @@ class QuoteModel(db.Model):
 def handle_exception(e):
     return jsonify({"message": e.description}), e.code
 
-# ДЛЯ СЕБЯ - оставлю подсказку
+# -------------- ДЛЯ СЕБЯ - оставлю подсказку
 @app.route('/')
 def api_root():
     routes = {}
@@ -83,7 +84,18 @@ def api_root():
                 "endpoint": rule.endpoint # имя функции
             }
     return jsonify(routes)
-# 
+
+# Подключение к внешнему api, на примере своего же
+@app.route('/ext/authors', methods=['GET'])
+def simple_test():
+    try:
+        response = requests.get('https://evanmas.pythonanywhere.com/authors')
+        return response.json(), response.status_code
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+# TODO так вроде пишут, можно будет потом добавить сравнение, и если находит авторов 
+# которых нет у меня до добавляет, чтобы какой то смылс появился от этого вызова
+# --------------
 
 # Authors CRUD
 @app.route("/authors", methods=['GET'])
