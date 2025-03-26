@@ -67,9 +67,23 @@ class QuoteModel(db.Model):
             "created": self.created.strftime("%d.%m.%Y")
         }
 
+
 @app.errorhandler(HTTPException)
 def handle_exception(e):
     return jsonify({"message": e.description}), e.code
+
+# ДЛЯ СЕБЯ - оставлю подсказку
+@app.route('/')
+def api_root():
+    routes = {}
+    for rule in app.url_map.iter_rules(): # проходит и возращает все url которые у нас есть
+        if rule.endpoint != 'static':
+            routes[str(rule)] = {
+                "methods": sorted(rule.methods - {'OPTIONS', 'HEAD'}), # убираем стандартные методы
+                "endpoint": rule.endpoint # имя функции
+            }
+    return jsonify(routes)
+# 
 
 # Authors CRUD
 @app.route("/authors", methods=['GET'])
