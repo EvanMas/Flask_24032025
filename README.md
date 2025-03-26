@@ -22,7 +22,7 @@
 
 ```bash
 # 1. Клонирование репозитория
-git clone <repository-url> <folder-name> && cd <folder-name>
+git clone <repository-url> <folder-name>
 
 # 2. Создание виртуального окружения
 mkvirtualenv flask_venv --python=/usr/bin/python3.10
