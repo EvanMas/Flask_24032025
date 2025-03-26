@@ -25,15 +25,18 @@ class AuthorModel(db.Model):
     __tablename__ = 'authors'
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(32), index=True, unique=True)
+    surname: Mapped[str] = mapped_column(String(32), nullable=True)
     quotes: Mapped[list['QuoteModel']] = relationship(back_populates='author', lazy='dynamic', cascade='all, delete-orphan')
 
-    def __init__(self, name):
+    def __init__(self, name, surname):
         self.name = name
+        self.surname = surname
 
     def to_dict(self):
         return {
             'id' : self.id,
-            "name": self.name
+            "name": self.name,
+            "surname": self.surname
         }
 
 class QuoteModel(db.Model):
@@ -52,7 +55,7 @@ class QuoteModel(db.Model):
             "id": self.id,
             "author_id": self.author_id,
             "text": self.text,
-            "author_name": self.author.name if self.author else None
+            "author_name": self.author.name
         }
 
 @app.errorhandler(HTTPException)
@@ -78,7 +81,10 @@ def create_author():
     if not data or 'name' not in data:
         return {"error": "Missing required field 'name'"}, 400
     
-    author = AuthorModel(name=data['name'])
+    author = AuthorModel(
+        name=data['name'],
+        surname=data.get('surname') # для необязательных полей метод get
+        )
     db.session.add(author)
     db.session.commit()
     return jsonify(author.to_dict()), 201
@@ -92,6 +98,9 @@ def update_author(author_id):
     data = request.json
     if 'name' in data:
         author.name = data['name']
+
+    if 'surname' in data:
+        author.surname = data['surname']    
     
     db.session.commit()
     return jsonify(author.to_dict()), 200
